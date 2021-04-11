@@ -12,7 +12,11 @@
 #define DB_NAME "test.db"
 #define DEFAULT_PORT 7071
 #define MAX_PACK 1024*1024
+#define MAX_HTML_RES 512*512
 #define MAX_TBL 250
+#define MAX_SQL_QUERY 100
+#define MAX_END_OF_HTML 500
+#define MAX_FILE 2048
 #define CODE200 "HTTP/1.1 200 OK\n\
 \n"
 #define CODE404 "HTTP/1.1 404 Not Found\n\
@@ -89,8 +93,6 @@ void* listening(void* param) {
 	int connId;
 
 	while (1) {
-		printf("bella7INIz\n");
-		fflush(stdout);
 		connId = accept(p->sock_id,
 						(struct sockaddr*) &p->client,
 						&p->len);
@@ -103,8 +105,6 @@ void* listening(void* param) {
 		pthread_t thread_id;
 		if ( pthread_create(&thread_id, NULL, response, (void*) &connId))
 			errore("pthread_create()", -6);
-		printf("bella7\n");
-		fflush(stdout);
 	}
 }
 
@@ -121,7 +121,6 @@ void* response(void* param) {
 	if (rc < 0) errore("recv()", -7);
 
 	printf("Client is making a request ...\n");
-	fflush(stdout);
 	buffer[rc] = '\0';
 
 
@@ -137,9 +136,7 @@ void* response(void* param) {
 	char msg[MAX_PACK + strlen(CODE200) + 1];
 	int len = 0;
 	if (fp != NULL && strcmp(url, EMPTY_REQ)) {
-		char* html_res = strdup(buildHTML(fp));
-		sprintf(msg, "%s%s", CODE200, html_res);
-		free(html_res);
+		sprintf(msg, "%s%s", CODE200, buildHTML(fp));
 	} else {
 		printf("Oh no! File Not Found!\n");
 		FILE* fpNotFound = fopen(URL_404, "r");
@@ -167,7 +164,7 @@ char* buildHTML(FILE* fp) {
 
 
 	/* ============ SEARCHING FOR TAG ============*/
-	char* sqlQuery = (char*) malloc(sizeof(char) * (MAX_PACK+1));
+	char* sqlQuery = (char*) malloc(sizeof(char) * (MAX_SQL_QUERY));
 	sqlQuery = strdup(strstr(buffer, TAG_SQL_BEGIN) + 5); // trovo l'inizio query
 	*strstr(sqlQuery, TAG_SQL_END) = '\0'; // delimito la query
 
@@ -200,15 +197,14 @@ char* buildHTML(FILE* fp) {
 
 
 	/* ============ BUILDING HTML RESPONSE ============*/
-	char* html_res = (char*) malloc(sizeof(char) * (MAX_PACK + 1));
+	char* html_res = (char*) malloc(sizeof(char) * (MAX_HTML_RES));
 	html_res = strdup(buffer);
 
 	*strstr(html_res, TAG_SQL_BEGIN) = '\0';
 	strcat(html_res, html_tbl);
 	free(html_tbl);
 
-	char* end_of_html = (char*) malloc(sizeof(char) * (MAX_PACK + 1));
-	end_of_html = strdup(strstr(buffer, TAG_SQL_END) + 3); 
+	char* end_of_html = strdup(strstr(buffer, TAG_SQL_END) + 3); 
 	strcat(html_res, end_of_html);
 	free(end_of_html);
 	free(buffer);
@@ -233,7 +229,7 @@ int callback(void* NotUsed, int argc, char* argv[], char* azColName[]) {
 
 char* readFile(FILE* fp) {
 	int len = 0;
-	char* buffer = (char*) malloc(sizeof(char) * (MAX_PACK+1));
+	char* buffer = (char*) malloc(sizeof(char) * (MAX_FILE + 1));
 
 	while ( (*(buffer+len) = fgetc(fp)) != EOF )
 		len++;
