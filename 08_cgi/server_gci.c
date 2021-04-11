@@ -5,16 +5,12 @@
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
-
-
-
-
- // #include <regex.h> => ???
-
+#include <sqlite3.h>
 #include "includes/utilities.h"
 
 #define LO "127.0.0.1"
 #define DEFAULT_PORT 7071
+#define DB_NAME "test.db"
 #define MAX_PACK 1024*1024
 #define CODE200 "HTTP/1.1 200 OK\n\
 \n"
@@ -22,9 +18,10 @@
 \n"
 #define GET_URL_HEADER "GET "
 #define GET_URL_FOOTER " HTTP"
-#define PROMPT "$>"
+#define TAG_SQL_BEGIN "<SQL "
+#define TAG_SQL_END " />"
+#define URL_404 "404.html"
 #define EXIT_CMD "quit"
-#define REGEX_TAG_SQL "<SQL * />"
 
 typedef struct {
 	int sock_id;
@@ -40,24 +37,15 @@ typedef struct {
 void* listening(void*);
 void* response(void*);
 char* readFile(FILE*);
+char* buildHTML(FILE*);
+int callback(void*, int, char**, char**);
 
+char html_tbl[200];
 
 int main(int argc, char* argv[]) {
 
-	if (argc != 3) {
-		printf("USAGE: %s file.html .db\n", argv[0]);
-		return -1;
-	}
-
-	int port = DEFAULT_PORT;
-	char* fileHTML = argv[1];
-	char* dbName = argv[2];
-
-	printf("init ...\n");
-
-	// CREAZIONE SERVER
-	// 	(edit =>) con la classe ServerTCP
-	// 	('' =>) cambiare valori return
+	printf("Init ...\n");
+	int port = argc>1? atoi(argv[1]) : DEFAULT_PORT;
 
 	struct sockaddr_in myself, client;
 	myself.sin_family = AF_INET;
@@ -66,23 +54,22 @@ int main(int argc, char* argv[]) {
 	for (int i=0; i<8; i++) myself.sin_zero[i] = 0;
 
 	int sock_id = socket(AF_INET, SOCK_STREAM, 0);
-	if ( sock_id <= 0 ) errore("socket()", -5);
+	if ( sock_id <= 0 ) errore("socket()", -1);
 
 	socklen_t len = sizeof(struct sockaddr);
 	if ( bind(sock_id, (struct sockaddr*) &myself, len) == -1)
-		errore("bind()", -6);
+		errore("bind()", -2);
 
 	printf("Server listening on %s:%d ...\n", LO, port);
-	if ( listen(sock_id, 50)) errore("listen()", -5); 
+	if ( listen(sock_id, 50)) 
+		errore("listen()", -3); 
 
 	ListeningParams params = { sock_id, client, len };
-
-
 	pthread_t thread_id;
 	if ( pthread_create(&thread_id, NULL, listening, (void*) &params))
-		errore("pthread_create()", -1);
+		errore("pthread_create()", -4);
 
-	printf("%s \n", PROMPT);
+	printf("\n");
 	char* cmd = inputStr();
 	while ( strcmp(cmd, EXIT_CMD) ) {
 		free(cmd);
@@ -90,106 +77,162 @@ int main(int argc, char* argv[]) {
 	}
 	free(cmd);
 
-	// server->chiudi();
-
 	close(sock_id);
-
+	printf("Server closed!\n");
 	return 0;
 }
 
 void* listening(void* param) {
-
-	// server
 	ListeningParams* p = (ListeningParams*) param;
 	int connId;
 
 	while (1) {
-		// server->accetta
-		// if ( == -1) errore("accept()", -2);
 		connId = accept(p->sock_id,
 						(struct sockaddr*) &p->client,
 						&p->len);
-		if (connId == -1) errore("accept()", -5);
+		if (connId == -1) 
+			errore("accept()", -5);
 		printf("Client has connected! ...\n");
 
 		ResponseParams param = { connId };
 
 		pthread_t thread_id;
 		if ( pthread_create(&thread_id, NULL, response, (void*) &connId))
-			errore("pthread_create()", -3);
+			errore("pthread_create()", -6);
 	}
-
 }
 
 
 void* response(void* param) {
-
-	// server
 	ResponseParams* p = (ResponseParams*) param;
-	int rc;
-	int connId = p->connId;
+	int rc, connId = p->connId;
 
 	char buffer[MAX_PACK + 1];
 	rc = recv(connId,
 				buffer,
 				MAX_PACK,
 				0);
-	if (rc <= 0) errore("recv()", -7);
+	if (rc < 0) errore("recv()", -7);
 
-	// char buffer[MAX_PACK + 1];
-	/* char* buffer = server->ricevi();
-	if (buffer == NULL) errore("ricevi()", -3); */
 	printf("Client is making a request ...\n");
+	fflush(stdout);
 	buffer[rc] = '\0';
 
-	// edit succssiva => ricerca file
-	// ora ce l'ho come parametro
 
-	FILE* fpHTML = fopen(/*fileHTML*/ "index.html", "r");
-	// free(fileHTML);
+	/* ============ LOOKING FOR FILE ============ */
+	char* url = strdup(strstr(buffer, GET_URL_HEADER) + 3);
+	*url = '.';
+	*strstr(url, GET_URL_FOOTER) = '\0';
+	printf("Now looks for file %s\n", url);
+	fflush(stdout);
+
+	FILE* fp = fopen(url, "r");
+	free(url);
+
 	char msg[MAX_PACK + strlen(CODE200) + 1];
 	int len = 0;
-	if (fpHTML == NULL) {
-		// ...
-		// return -5;
-		return NULL;
+	if (fp != NULL) {
+		sprintf(msg, "%s%s", CODE200, buildHTML(fp));
+	} else {
+		printf("Oh no! File Not Found!\n");
+		FILE* fpNotFound = fopen(URL_404, "r");
+		if (fpNotFound != NULL)
+			sprintf(msg, "%s%s", CODE404, readFile(fpNotFound));
+		else sprintf(msg, "%s", CODE404);
 	}
+	printf("The response:\n%s\n", msg);
 
-	sprintf(msg, "%s%s", CODE200, readFile(fpHTML));
-	// rc = server->invia(msg);
-	// if (rc) errore("invia()", -4);
-	if ( send(connId, msg, len, 0) != strlen(msg) ) errore("send()", -6);
-	printf("Answer sent\n");
+	len = strlen(msg);
+	if ( send(connId, msg, len, 0) != strlen(msg) ) 
+		errore("send()", -8);
+	printf("Answer sent!\n");
 
-	printf("Closing connection\n\n");
-	// server->chidi();
 	shutdown(connId, SHUT_RDWR);
-	close(connId);
+	printf("Connection closed\n\n");
+
+	return NULL;
 }
 
+char* buildHTML(FILE* fp) {
+
+	/* ============ READING FILE ============*/
+	char* buffer = readFile(fp);
+
+
+	/* ============ SEARCHING FOR TAG ============*/
+	char* sqlQuery = (char*) malloc(sizeof(char) * (MAX_PACK+1));
+	sqlQuery = strdup(strstr(buffer, TAG_SQL_BEGIN) + 5); // trovo l'inizio query
+	*strstr(sqlQuery, TAG_SQL_END) = '\0'; // delimito la query
+
+
+	/* ============ QUERY ON DB ============*/
+	sqlite3 *db;
+	sqlite3_stmt *stmt;
+	char* err_msg = 0;
+
+	int rc = sqlite3_open(DB_NAME, &db);
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+		sqlite3_free(err_msg);
+		sqlite3_close(db);
+		errore("sqlite3_open()", -9);
+	}
+
+	strcat(html_tbl, "<table>");
+	rc = sqlite3_exec(db, sqlQuery, callback, 0, &err_msg);
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "Failed to select data\n");
+		fprintf(stderr, "SQL error: %s\n", err_msg);
+		sqlite3_free(err_msg);
+		sqlite3_close(db);
+		return "404 DB Not Found";
+	}
+	free(sqlQuery);
+	sqlite3_close(db);
+	strcat(html_tbl, "</table>");
+
+
+	/* ============ BUILDING HTML RESPONSE ============*/
+	char* html_res = (char*) malloc(sizeof(char) * (MAX_PACK + 1));
+	html_res = strdup(buffer);
+
+	*strstr(html_res, TAG_SQL_BEGIN) = '\0';
+	strcat(html_res, html_tbl);
+	*html_tbl = '\0';
+
+	char* end_of_html = (char*) malloc(sizeof(char) * MAX_PACK);
+	end_of_html = strdup(strstr(buffer, TAG_SQL_END) + 3); 
+	strcat(html_res, end_of_html);
+	free(end_of_html);
+	free(buffer);
+
+	return html_res;  
+}
+
+int callback(void* NotUsed, int argc, char* argv[], char* azColName[]) {
+	NotUsed = 0;
+
+	/* ============ BUILDING HTML TABLE ROW ============*/
+	strcat(html_tbl, "<tr>");
+	for (int i=0; i<argc; i++) {
+		strcat(html_tbl, "<td>");
+		strcat(html_tbl, argv[i]);
+		strcat(html_tbl, "</td>");
+	}
+	strcat(html_tbl, "</tr>");
+
+	return 0;
+}
 
 char* readFile(FILE* fp) {
-	char* std = "ciao";
 	int len = 0;
 	char* buffer = (char*) malloc(sizeof(char) * (MAX_PACK+1));
+
 	while ( (*(buffer+len) = fgetc(fp)) != EOF )
 		len++;
-
 	*(buffer+len) = '\0';
 	fclose(fp);
 
-	printf("%s\n\n%s", buffer, REGEX_TAG_SQL);
-	fflush(stdout);
-
-	
-	// individuo la presenza del tag <SQL "query" />
-	// ricontrollare le FREE
-	char* sqlQuery = (char*) malloc(sizeof(char) * (MAX_PACK+1));
-	sqlQuery = strdup(strstr(buffer, REGEX_TAG_SQL) + 4);
-	printf("%s\n", sqlQuery);
-	fflush(stdout); 
-
-
-	return std;  
+	return buffer;
 }
 

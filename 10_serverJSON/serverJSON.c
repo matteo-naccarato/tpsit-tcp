@@ -89,8 +89,8 @@ int main(int argc, char* argv[]) {
 	}
 	free(cmd);
 
-	printf("Closing socket ...\n");
 	close(sock_id);
+	printf("Server closed!\n");
 	return 0;
 }
 
@@ -146,8 +146,8 @@ void* response(void* params) {
 	if ( send(connId, res, len, 0) != strlen(res) )
 		errore("send()", -8);
 
-	printf("Closing connection\n\n");
 	shutdown(connId, SHUT_RDWR);
+	printf("Connection closed\n\n");
 }
 
 char* queryDB(char* tbl_name, char* query) {
@@ -177,6 +177,7 @@ char* queryDB(char* tbl_name, char* query) {
 		sqlite3_close(db);
 		return "404 Not Found";
 	}
+	free(sqlQuery);
 	sqlite3_close(db);
 
 	// creating a json obj
