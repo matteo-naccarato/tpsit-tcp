@@ -113,7 +113,7 @@ void* response(void* param) {
 				buffer, 
 				MAX_PACK, 
 				0);
-	if (rc <= 0) errore("recv()", -7);
+	if (rc < 0) errore("recv()", -7);
 	printf("Client is making a request...\n");
 	buffer[rc] = '\0';	
 
@@ -123,12 +123,12 @@ void* response(void* param) {
 	sprintf(msg, "%s%s", CODE200, toJson(p1));
 
 	int len = strlen(msg);
-	if ( send(connId, msg, len, 0) != strlen(msg) ) errore("send()", -6);
+	if ( send(connId, msg, len, 0) != strlen(msg) ) 
+		errore("send()", -8);
 	printf("Answer sent\n");
 
-	printf("Closing connection and server\n\n");
+	printf("Closing connection\n\n");
 	shutdown(connId, SHUT_RDWR);	
-	close(connId);
 }
 
 

@@ -70,7 +70,7 @@ char* ClientTCP::ricevi() {
 	int len;
 	char* buffer = (char*) ricevi(&len);
 
-	if (len <= 0) return NULL;
+	if (len < 0) return NULL;
 
 	buffer[len] = '\0';
 	return buffer;
@@ -87,7 +87,7 @@ void* ClientTCP::ricevi(int* len) {
 					0);
 	*len = rc;
 
-	if (rc > 0 ) return (void*) buffer;
+	if (rc >= 0 ) return (void*) buffer;
 
 	free(buffer);
 	return NULL;

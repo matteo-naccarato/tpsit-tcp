@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
 				buffer,
 				MAX_STR,
 				0);
-	if (rc <= 0) errore("recv()", -5);
+	if (rc < 0) errore("recv()", -5);
 	printf("received from \t[%s:%d] \t'%s'\n", ip, port, buffer);
 
 	close(sock_id);

@@ -57,7 +57,7 @@ void* listening(void* param) {
 		ResponseParams params = { serverTCP, conn };
 		pthread_t thread_id;
 		if ( pthread_create(&thread_id, NULL, response, (void*) &params) )
-			errore((char*) "pthread_create()", -6);
+			errore((char*) "pthread_create()", -2);
 	}
 
 	return NULL;
@@ -67,12 +67,12 @@ void* response(void* params) {
 	ResponseParams* p = (ResponseParams*) params;
 
 	char* resp = strdup( p->conn->ricevi() );
-	if (resp == NULL) errore((char*) "ricevi()", -7);
+	if (resp == NULL) errore((char*) "ricevi()", -3);
 	printf("Client is making a request ... he said: \"%s\"\n", resp);
 	free(resp);
 
 	if ( p->conn->invia((char*) MSG) ) 
-		errore((char*) "invia()", -8);
+		errore((char*) "invia()", -4);
 	printf("Answer sent!\n");
 	
 	p->myself->chiudi(p->conn);

@@ -89,7 +89,7 @@ void* mythread(void* param) {
 				buffer,
 				MAX_STR,
 				0);
-	if (rc <= 0) errore("recv()", -6);
+	if (rc < 0) errore("recv()", -6);
 	buffer[rc] = '\0';
 	char* ipClient = strdup(inet_ntoa(p->client.sin_addr));
 	int portClient = ntohs(p->client.sin_port);

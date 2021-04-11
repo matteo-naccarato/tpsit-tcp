@@ -98,7 +98,8 @@ int main(int argc, char* argv[]) {
 		Params param = { connId, client };
 
 		pthread_t thread_id;
-		if ( pthread_create(&thread_id, NULL, mythread, (void*) &param) ) errore("pthread_create()", -6);
+		if ( pthread_create(&thread_id, NULL, mythread, (void*) &param) ) 
+			errore("pthread_create()", -6);
 		pthread_join(thread_id, NULL);	
 	}
 
@@ -118,7 +119,7 @@ void* mythread(void* param) {
 				buffer,
 				MAX_STR,
 				0);
-	if (rc <= 0) errore("recv()", -6);
+	if (rc < 0) errore("recv()", -6);
 	buffer[rc] = '\0';
 	char* ipClient = strdup(inet_ntoa(p->client.sin_addr));
 	int portClient = ntohs(p->client.sin_port);
@@ -127,7 +128,6 @@ void* mythread(void* param) {
 
 
 	/* ------------ GET FILE NAME ------------ */
-
 	char* firstLine = (char*) malloc(sizeof(char) * MAX_STR);
 	char* tmp; // di supporto durante la strchr
 	
@@ -146,22 +146,6 @@ void* mythread(void* param) {
 	
 	free(firstLine);
 
-
-	/* ------------ TEST SPLIT (errore nella malloc) ------------ */
-	/* char* firstLine = *(split(buffer, "\n"));
-	printf("-- %s --\n", firstLine);
-
-	char* file;
-	sscanf(buffer, "GET /%s", file);
-	printf("-- %s --\n", file); */
-	/* ------------ FINE TEST ------------ */
-
-
-	/* ------------ FINE GET FILE NAME ------------ */
-
-
-	
-
 	char* res = (char*) malloc(sizeof(char) * MAX_STR);
 	FILE* fp = fopen(filename, "r");
 
@@ -169,7 +153,8 @@ void* mythread(void* param) {
 	else {
 
 		FILE* fpNotFound = fopen("404.html", "r");
-		if (fpNotFound == NULL) errore("fopen(404)", -8);
+		if (fpNotFound == NULL) 
+			errore("fopen(404)", -7);
 		
 		strcpy(res, readFile(fpNotFound));	
 	}
@@ -178,11 +163,10 @@ void* mythread(void* param) {
 				res,
 				strlen(res),
 				0);
-	if (rc != strlen(res)) errore("send()", -7);
+	if (rc != strlen(res)) errore("send()", -8);
 	printf("sent to \t[%s:%d] \t'%s'\n", ipClient, portClient, res);
 
 	free(res);
-
 	free(filename);
 
 

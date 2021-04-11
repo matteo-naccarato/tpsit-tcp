@@ -122,7 +122,7 @@ void* response(void* params) {
 				buffer,
 				MAX_PACK + 1,
 				0);
-	if (rc<0)
+	if (rc < 0)
 		errore("recv()", -7);
 	buffer[rc] = '\0';
 	printf("Client is making a request ...\n");
@@ -176,7 +176,6 @@ char* queryDB(char* tbl_name, char* query) {
 		sqlite3_free(err_msg);
 		sqlite3_close(db);
 		return "404 Not Found";
-		// errore("sqlite3_exec()", -10);
 	}
 	sqlite3_close(db);
 

@@ -69,8 +69,8 @@ int main(int argc, char* argv[]) {
 		Params param = { connId, client, msg };
 
 		pthread_t thread_id;
-		if ( pthread_create(&thread_id, NULL, mythread, (void*) &param) ) errore("pthread_create()", -6);
-		pthread_join(thread_id, NULL);
+		if ( pthread_create(&thread_id, NULL, mythread, (void*) &param) ) 
+			errore("pthread_create()", -6);
 	}
 
 	close(sock_id);
@@ -89,7 +89,7 @@ void* mythread(void* param) {
 				buffer,
 				MAX_STR,
 				0);
-	if (rc <= 0) errore("recv()", -6);
+	if (rc < 0) errore("recv()", -7);
 	buffer[rc] = '\0';
 	char* ipClient = strdup(inet_ntoa(p->client.sin_addr));
 	int portClient = ntohs(p->client.sin_port);
@@ -100,15 +100,13 @@ void* mythread(void* param) {
 				p->msg,
 				strlen(p->msg) + 1,
 				0);
-	if (rc != strlen(p->msg) + 1) errore("send()", -7);
+	if (rc != strlen(p->msg) + 1) 
+		errore("send()", -8);
 	printf("sent to \t[%s:%d] \t'%s'\n", ipClient, portClient, p->msg);
 
 
 	// chiudo la connessione, sia in lettura sia in scrittura
 	shutdown(p->connId, SHUT_RDWR);
-
-	// free(p); p non e' piu' allocato in modo dinamico
-
 
 	pthread_exit(NULL);
 }

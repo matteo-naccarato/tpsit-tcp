@@ -54,7 +54,8 @@ int main(int argc, char* argv[]) {
 		errore("bind()", -2);
 
 	printf("Server listening on %s:%d...\n", LO, port);
-	if (listen(sock_id, 50)) errore("listen()", -3);
+	if (listen(sock_id, 50)) 
+		errore("listen()", -3);
 
 	ListeningParams params = { sock_id, client, len };
 
@@ -123,28 +124,22 @@ void* response(void* param) {
 	char msg[MAX_PACK + strlen(CODE200) + 1];
 	int len = 0;
 	if (fp != NULL) {
-		/*while ( (*(buffer+len) = fgetc(fp)) != EOF)
-			len++;
-		*(buffer+len) = '\0';
-		fclose(fp);
-		sprintf(msg, "%s%s", CODE200, buffer);*/
 		sprintf(msg, "%s%s", CODE200, readFile(fp));
 	} else {
 		printf("File Not Found!\n");
 		FILE* fpNotFound = fopen(URL_404, "r");
 		if (fpNotFound != NULL)
 			sprintf(msg, "%s%s", CODE404, readFile(fpNotFound));
-		else printf("Error opening 404 file!\n");
-		//sprintf(msg, "%s", CODE404);
+		else printf("Error opening 404 file!\n");;
 	}
 
 	len = strlen(msg);
-	if ( send(connId, msg, len, 0) != strlen(msg) ) errore("send()", -6);
+	if ( send(connId, msg, len, 0) != strlen(msg) ) 
+		errore("send()", -8);
 	printf("Answer sent\n");
 
-	printf("Closing connection and server\n\n");
+	printf("Closing connection\n\n");
 	shutdown(connId, SHUT_RDWR);	
-	close(connId);
 }
 
 char* readFile(FILE* fp) {

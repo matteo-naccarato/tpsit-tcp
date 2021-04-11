@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 				buffer,
 				MAX_STR,
 				0);
-	if (rc <= 0) errore("recv()", -6);
+	if (rc < 0) errore("recv()", -6);
 	buffer[rc] = '\0';
 	char* ipClient = strdup(inet_ntoa(client.sin_addr));
 	int portClient = ntohs(client.sin_port);
