@@ -18,20 +18,21 @@
 
 class ServerTCP : public SocketTCP {
 
-	private: list<ConnessioneServer> connessioni;
+	private: std::list<ConnessioneServer*> connessioni;
 
 	public: ServerTCP(Address);	// bind() + listen()
-			ConnessioneServer accetta();
-			void chiudi(ConnessioneServer);
+			ConnessioneServer* accetta();
+			void chiudi(ConnessioneServer*);
+			void chiudi();
 			~ServerTCP();		
 };
 
 
 ServerTCP::ServerTCP(Address myself) : SocketTCP() {
-
+	socklen_t len = sizeof(struct sockaddr);
 	if ( bind(this->sock_id,
 				(struct sockaddr*) myself.getAddress(),
-				sizeof(myself)) )
+				len) )
 		errore((char*) "bind()", -3);
 	printf("Bind successfully competed\n");
 
@@ -41,37 +42,28 @@ ServerTCP::ServerTCP(Address myself) : SocketTCP() {
 }
 
 
-ConnessioneServer ServerTCP::accetta() {
-	int len;
+ConnessioneServer* ServerTCP::accetta() {
 	struct sockaddr_in client;
+	socklen_t len = sizeof(struct sockaddr);
 	int connId = accept(this->sock_id,
 						(struct sockaddr*) &client,
-						(socklen_t*) &len);
+						&len);
 	if (connId == -1) errore((char*) "accept()", -5);
-	ConnessioneServer conn(connId);
+	ConnessioneServer* conn = new ConnessioneServer(connId);
 	this->connessioni.push_back(conn);
 	return conn;
 }
 
-
-
-void ServerTCP::chiudi(ConnessioneServer conn) {
-	// connessioni DA RIMUOVERE DALLA COLLEZIONE
-	// delete conn;
+void ServerTCP::chiudi(ConnessioneServer* conn) {
+	connessioni.remove(conn);
+	delete conn;
 }
 
-ServerTCP::~ServerTCP() {
-	// chiamata a tutti gli elementi nella collezione della connessione:
-	//	- si chiudono una ad una
-	//	- faccio la close del server
-
-	/* list<int> :: interator it;
-	for (it = this->connessioni.begin; it != this->connessioni.end; ++it)
-		chiudi(*it); */
-
-	// ~SocketTCP();
+void ServerTCP::chiudi() {
+	for (std::list<ConnessioneServer*>::iterator it = connessioni.begin(); it != connessioni.end(); it++) {
+		delete *it;
+	}
+	close(this->sock_id);
 }
-
-
 
 #endif // __SERVER_TCP_

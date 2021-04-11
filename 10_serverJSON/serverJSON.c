@@ -120,7 +120,7 @@ void* response(void* params) {
 	char buffer[MAX_PACK + 1];
 	rc = recv(connId,
 				buffer,
-				MAX_PACK,
+				MAX_PACK + 1,
 				0);
 	if (rc<0)
 		errore("recv()", -7);

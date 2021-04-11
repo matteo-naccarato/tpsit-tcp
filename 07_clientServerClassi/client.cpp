@@ -26,6 +26,5 @@ int main(int argc, char* argv[]) {
 	printf("received from \t[%s:%d] \t'%s'\n", ip, port, resp);
 	free(resp);
 
-	delete myself;
 	return 0;
 }

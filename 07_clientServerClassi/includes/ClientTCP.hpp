@@ -29,13 +29,11 @@ class ClientTCP : public SocketTCP {
 
 ClientTCP::ClientTCP(Address server) : SocketTCP() {
 
-	// this->connessione = ConnessioneClient(this->sock_id);
-	
-	struct sockaddr_in* serverAddr = server.getAddress();
-	if (connect(this->sock_id,
-				(struct sockaddr*) serverAddr,
-				(socklen_t) sizeof(struct sockaddr_in)))
-		errore((char*) "ServerTCP::connect()", -3);
+	this->connessione = ConnessioneClient(this->sock_id);
+	if ( connect(this->sock_id,
+				(struct sockaddr*) server.getAddress(),
+				(socklen_t) sizeof(struct sockaddr_in)) )
+		errore((char*) "ClientTCP::connect()", -3);
 }
 
 

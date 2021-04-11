@@ -19,11 +19,10 @@ class ConnessioneServer : public Connessione {
 };
 
 ConnessioneServer::ConnessioneServer() : Connessione() {}
-ConnessioneServer::ConnessioneServer(int id) : Connessione(id) {
-	this->id = id;
-}
+ConnessioneServer::ConnessioneServer(int id) : Connessione(id) {}
 
 ConnessioneServer::~ConnessioneServer() {
+	printf("sto spegnendo la Connessione\n");
 	shutdown(this->id, SHUT_RDWR);
 }
 

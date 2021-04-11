@@ -13,11 +13,19 @@
 void* listening(void*);
 void* response(void*);
 
+char* testa;
+
+typedef struct {
+	ServerTCP* myself;
+	ConnessioneServer* conn;
+} ResponseParams;
+
 int main(int argc, char* argv[]) {
 
+	printf("Init ...\n");
 	int port = argc>1? atoi(argv[1]) : DEFAULT_PORT;
 
-	printf("init ...\n");
+	testa = argv[2];
 
 	Address myself((char*) IP_LO, port);
 	ServerTCP* serverTCP = new ServerTCP(myself);
@@ -26,7 +34,7 @@ int main(int argc, char* argv[]) {
 	if ( pthread_create(&thread_id, NULL, listening, (void*) serverTCP) )
 		errore((char*) "pthread_create()", -1);
 
-	printf("%s \n", PROMPT);
+	printf("\n");
 	char* cmd = inputStr();
 	while ( strcmp(cmd, EXIT_CMD) ) {
 		free(cmd);
@@ -34,8 +42,8 @@ int main(int argc, char* argv[]) {
 	}
 	free(cmd);
 
-
-	delete serverTCP;
+	serverTCP->chiudi();
+	printf("Server closed!\n");
 	return 0;
 }
 
@@ -43,30 +51,31 @@ void* listening(void* param) {
 	ServerTCP* serverTCP = (ServerTCP*) param;
 
 	while (1) {
-		ConnessioneServer conn = serverTCP->accetta();
+		ConnessioneServer* conn = serverTCP->accetta();
 		printf("Client has connected! ...\n");
 
+		ResponseParams params = { serverTCP, conn };
 		pthread_t thread_id;
-		if ( pthread_create(&thread_id, NULL, response, (void*) &conn) )
+		if ( pthread_create(&thread_id, NULL, response, (void*) &params) )
 			errore((char*) "pthread_create()", -6);
 	}
 
 	return NULL;
 }
 
-void* response(void* param) {
-	ConnessioneServer* conn = (ConnessioneServer*) param;
+void* response(void* params) {
+	ResponseParams* p = (ResponseParams*) params;
 
-	char* resp = strdup( conn->ricevi() );
+	char* resp = strdup( p->conn->ricevi() );
 	if (resp == NULL) errore((char*) "ricevi()", -7);
-	printf("Client is making a request ...\n");
+	printf("Client is making a request ... he said: \"%s\"\n", resp);
+	free(resp);
 
-	if ( conn->invia((char*) MSG) != strlen(MSG) ) 
+	if ( p->conn->invia((char*) MSG) ) 
 		errore((char*) "invia()", -8);
 	printf("Answer sent!\n");
-
-	printf("Closing connection ...\n\n");
-
-	// delete conn;
+	
+	p->myself->chiudi(p->conn);
+	printf("Connection closed!\n\n");
 	return NULL;
 }

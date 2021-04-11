@@ -23,17 +23,14 @@ class Connessione {
 			void* ricevi(int*);		// recv()
 };
 
-Connessione::Connessione() {
-	
-}
+Connessione::Connessione() {}
 
 Connessione::Connessione(int id) {
 	this->id = id;
 }
 
 int Connessione::invia(char* msg) {
-	msg[strlen(msg) + 1] = '\0';
-	return invia( (void*) msg, (strlen(msg) +1));
+	return invia( (void*) msg, strlen(msg));
 }
 
 int Connessione::invia(void* buffer, int len) {
@@ -45,12 +42,12 @@ int Connessione::invia(void* buffer, int len) {
 }
 
 char* Connessione::ricevi() {
-	int len;
-	char* buffer = (char*) ricevi(&len);
+	int* len = (int*) malloc(sizeof(int));
+	char* buffer = (char*) ricevi(len);
 
-	if (len <= 0) return NULL;
+	if (*len < 0) return NULL;
 
-	buffer[len] = '\0';
+	buffer[*len] = '\0';
 	return buffer;
 }
 
